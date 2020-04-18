@@ -58,9 +58,9 @@ def build_constraint_table(constraints, agent):
     for constraint in constraints:
         if constraint['agent'] == agent:
             if constraint['timestep'] in constraint_table:
-                constraint_table[constraint['timestep']].append(constraint['loc'])
+                constraint_table[constraint['timestep']].append(constraint)
             else:
-                constraint_table[constraint['timestep']] = [constraint['loc']]
+                constraint_table[constraint['timestep']] = [constraint]
 
             if constraint['timestep'] > max_timestep:
                 max_timestep = constraint['timestep']
@@ -94,14 +94,14 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     #               any given constraint. For efficiency the constraints are indexed in a constraint_table
     #               by time step, see build_constraint_table.
     if next_time in constraint_table:
-        # Handle vertex constraints
-        if [next_loc] in constraint_table[next_time]:
-            return True
-        # Handle edge constraints
-        elif [curr_loc, next_loc] in constraint_table[next_time]:
-            return True
-        else:
-            return False
+        for constraint in constraint_table[next_time]:
+            if [next_loc] == constraint['loc']:
+                return True
+            # Handle edge constraints
+            elif [curr_loc, next_loc] == constraint['loc']:
+                return True
+    
+        return False
     else:
         return False
 

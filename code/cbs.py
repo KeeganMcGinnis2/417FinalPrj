@@ -37,8 +37,8 @@ def detect_collisions(paths):
                 elif collision_type == 'e':
                     collision = {'a1': i, 'a2': j, 'loc': [get_location(paths[i], timestep-1), get_location(paths[i], timestep)], 'timestep': timestep}
                     collisions.append(collision)
-    
     return collisions
+
 
 def standard_splitting(collision):
     ##############################
@@ -50,44 +50,14 @@ def standard_splitting(collision):
     #                          specified timestep, and the second constraint prevents the second agent to traverse the
     #                          specified edge at the specified timestep
     if len(collision['loc']) == 1:
-        constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
-        constraint2 = {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
+        constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep']}
+        constraint2 = {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep']}
     else:      
-        constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
-        constraint2 = {'agent': collision['a2'], 'loc': [collision['loc'][1], collision['loc'][0]], 'timestep': collision['timestep'], 'positive': False}
+        constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep']}
+        constraint2 = {'agent': collision['a2'], 'loc': [collision['loc'][1], collision['loc'][0]], 'timestep': collision['timestep']}
     
     return [constraint1, constraint2]
     
-
-
-def disjoint_splitting(collision):
-    ##############################
-    # Task 4.1: Return a list of (two) constraints to resolve the given collision
-    #           Vertex collision: the first constraint enforces one agent to be at the specified location at the
-    #                            specified timestep, and the second constraint prevents the same agent to be at the
-    #                            same location at the timestep.
-    #           Edge collision: the first constraint enforces one agent to traverse the specified edge at the
-    #                          specified timestep, and the second constraint prevents the same agent to traverse the
-    #                          specified edge at the specified timestep
-    #           Choose the agent randomly
-    random_int = random.randint(0,1)
-    if len(collision['loc']) == 1:
-        if random_int == 0:
-            constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': True}
-            constraint2 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
-        else:
-            constraint1 = {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': True}
-            constraint2 = {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
-    else:
-        if random_int == 0:
-            constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': True}
-            constraint2 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
-        else:
-            constraint1 = {'agent': collision['a2'], 'loc': [collision['loc'][1], collision['loc'][0]], 'timestep': collision['timestep'], 'positive': True}
-            constraint2 = {'agent': collision['a2'], 'loc': [collision['loc'][1], collision['loc'][0]], 'timestep': collision['timestep'], 'positive': False}
-    
-    return [constraint1, constraint2]
-
 
 def paths_violate_constraint(constraint, paths):
     assert constraint['positive'] is True
@@ -134,12 +104,12 @@ class CBSSolver(object):
 
     def push_node(self, node):
         heapq.heappush(self.open_list, (node['cost'], len(node['collisions']), self.num_of_generated, node))
-        print("Generate node {}".format(self.num_of_generated))
+        # print("Generate node {}".format(self.num_of_generated))
         self.num_of_generated += 1
 
     def pop_node(self):
         _, _, id, node = heapq.heappop(self.open_list)
-        print("Expand node {}".format(id))
+        # print("Expand node {}".format(id))
         self.num_of_expanded += 1
         return node
 
@@ -171,11 +141,11 @@ class CBSSolver(object):
         root['collisions'] = detect_collisions(root['paths'])
         self.push_node(root)
         # Task 3.1: Testing
-        print(root['collisions'])
+        # print(root['collisions'])
         
         # Task 3.2: Testing
-        for collision in root['collisions']:
-            print(standard_splitting(collision))
+        # for collision in root['collisions']:
+            # print(standard_splitting(collision))
 
         ##############################
         # Task 3.3: High-Level Search
@@ -187,8 +157,9 @@ class CBSSolver(object):
         #           Ensure to create a copy of any objects that your child nodes might inherit
         while len(self.open_list) > 0:
             p = self.pop_node()
-            print("Expanded node", p)
+            # print("Expanded node", p)
             if len(p['collisions']) == 0:
+                self.print_results(root)
                 return p['paths']
 
             collision = p['collisions'][0]
