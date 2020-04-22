@@ -1,4 +1,6 @@
 import heapq
+import math
+import time
 
 def move(loc, dir):
     directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
@@ -114,7 +116,6 @@ def pop_node(open_list):
     _, _, _, curr = heapq.heappop(open_list)
     return curr
 
-
 def compare_nodes(n1, n2):
     """Return true if n1 is better than n2."""
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
@@ -170,3 +171,64 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 push_node(open_list, child)
 
     return None  # Failed to find solutions
+
+
+def ida_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
+    """ my_map      - binary obstacle map
+        start_loc   - start position
+        goal_loc    - goal position
+        agent       - the agent that is being re-planned
+        constraints - constraints defining where robot should or cannot go at each timestep
+    """
+    # •A cost threshold l is set.
+    # •f(n) = g(n) + h(n) is computed in each iteration.
+    # •If f(n) < l we expand the node.
+    # •Else the branch is pruned (we don’t expand it).
+    # •If a goal node is reached with a cost lower than the threshold, then the goal it is returned.
+    # •Else if a whole iteration has ended without reaching the goal,then another iteration is begun 
+    # with a greater cost threshold.
+    # •The new cost threshold is set to the minimum cost of all nodes that were pruned on the previous
+    # iteration.
+    # •The cost Threshold for the first Iteration is set to the cost of the initial state.
+    h_value = h_values[start_loc]
+    threshold = h_value
+    root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
+    constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
+    while True:
+        t = search(my_map, root, goal_loc, h_values, agent, constraint_table, max_constraint_time, threshold)
+        if type(t) == dict:
+            # print('complete')
+            # print(agent, '   ', get_path(t))
+            # time.sleep(1)
+            return get_path(t)
+        elif t == math.inf:
+            # print('fail')
+            # time.sleep(1)
+            return None
+        threshold = t
+
+
+def search(my_map, curr, goal_loc, h_values, agent, constraint_table, max_constraint_time, threshold):
+    f = curr['g_val'] + curr['h_val']
+    if f > threshold:
+        return f
+    elif curr['loc'] == goal_loc and curr['timestep'] >= max_constraint_time:
+        return curr
+    minimum = math.inf
+    for dir in range(5):
+        child_loc = move(curr['loc'], dir)
+        if child_loc[0] == -1 or child_loc[0] == len(my_map) or child_loc[1] == -1 or child_loc[1] == len(my_map[0]):
+            continue
+        if my_map[child_loc[0]][child_loc[1]] or is_constrained(curr['loc'], child_loc, curr['timestep'] + 1, constraint_table):
+            continue
+        child = {'loc': child_loc,
+                'g_val': curr['g_val'] + 1,
+                'h_val': h_values[child_loc],
+                'parent': curr,
+                'timestep': curr['timestep'] + 1}
+        t = search(my_map, child, goal_loc, h_values, agent, constraint_table, max_constraint_time, threshold)
+        if type(t) == dict:
+            return t
+        elif t < minimum:
+            minimum = t
+    return minimum
