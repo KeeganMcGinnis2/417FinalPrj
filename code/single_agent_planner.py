@@ -197,13 +197,13 @@ def ida_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     while True:
         t = search(my_map, root, goal_loc, h_values, agent, constraint_table, max_constraint_time, threshold)
         if type(t) == dict:
-            print('complete')
-            print(agent, '   ', get_path(t))
-            time.sleep(1)
+            # print('complete')
+            # print(agent, '   ', get_path(t))
+            # time.sleep(1)
             return get_path(t)
         elif t == math.inf:
-            print('fail')
-            time.sleep(1)
+            # print('fail')
+            # time.sleep(1)
             return None
         threshold = t
 
@@ -230,5 +230,5 @@ def search(my_map, curr, goal_loc, h_values, agent, constraint_table, max_constr
         if type(t) == dict:
             return t
         elif t < minimum:
-            t = minimum
+            minimum = t
     return minimum
