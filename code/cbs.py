@@ -1,7 +1,7 @@
 import time as timer
 import heapq
 import random
-from single_agent_planner import compute_heuristics, a_star, get_location, get_sum_of_cost
+from single_agent_planner import compute_heuristics, a_star, get_location, get_sum_of_cost, ida_star
 
 
 def detect_collision(path1, path2):
@@ -113,7 +113,7 @@ class CBSSolver(object):
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, disjoint=True):
+    def find_solution(self, iterative=True):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -131,8 +131,12 @@ class CBSSolver(object):
                 'paths': [],
                 'collisions': []}
         for i in range(self.num_of_agents):  # Find initial path for each agent
-            path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
-                          i, root['constraints'])
+            if iterative:
+                path = ida_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+                                i, root['constraints'])
+            else:
+                path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+                              i, root['constraints'])
             if path is None:
                 raise BaseException('No solutions')
             root['paths'].append(path)
@@ -159,7 +163,7 @@ class CBSSolver(object):
             p = self.pop_node()
             # print("Expanded node", p)
             if len(p['collisions']) == 0:
-                self.print_results(root)
+                self.print_results(p)
                 return p['paths']
 
             collision = p['collisions'][0]
@@ -169,8 +173,12 @@ class CBSSolver(object):
                 q['constraints'] = p['constraints'] + [constraint]
                 q['paths'] = p['paths'] + []
                 ai = constraint['agent']
-                path = a_star(self.my_map, self.starts[ai], self.goals[ai], self.heuristics[ai],
-                          ai, q['constraints'])
+                if iterative:
+                    path = ida_star(self.my_map, self.starts[ai], self.goals[ai], self.heuristics[ai],
+                                    ai, q['constraints'])
+                else:
+                    path = a_star(self.my_map, self.starts[ai], self.goals[ai], self.heuristics[ai],
+                                  ai, q['constraints'])
                 
                 if len(path) > 0:
                     q['paths'][ai] = path
