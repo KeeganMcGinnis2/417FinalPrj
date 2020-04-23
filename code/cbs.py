@@ -149,7 +149,8 @@ class CBSSolver(object):
             # print("Expanded node", p)
             if len(p['collisions']) == 0:
                 self.print_results(p)
-                get_CG_cost(self.my_map, p)
+                # if CG:
+                    # get_CG_cost(self.my_map, p)
                 return p['paths']
 
             collision = p['collisions'][0]

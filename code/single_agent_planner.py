@@ -26,6 +26,10 @@ def get_CG_cost(my_map, N):
         MDDs.append(MDD)
         print_MDD(MDD)
     print(get_cardinal_conflicts(MDDs, numberOfAgents, c))
+    cards = get_cardinal_conflicts(MDDs, numberOfAgents, c)
+    g = build_graph(cards)
+    h = emvc(g, len(g), {})
+    print("THE H VALUE IS:", h, "!!!!!!!!!!!!!!!!!!!")
     return get_sum_of_cost(N['paths']) + h
 
 
@@ -78,7 +82,7 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
             push_node(open_list, child, nodeCount)
             nodeCount += 1
     print(agent)
-    time.sleep(1)
+    # time.sleep(1)
     return None  # Failed to find solutions
 
 def get_cardinal_conflicts(MDDs, numberOfAgents, c):
@@ -114,18 +118,55 @@ def build_graph(cardinal_conflicts):
 
     return adj_list
 
-def emvc(adj_list, upper_bound, cover):
+def neighbourhood(v):
+    nd = {}
+    for adj in v[1]:
+        if v[0] in nd:
+            nd[v[0]].append(adj)
+        else:
+            nd[v[0]] = [adj]
+
+    return nd
+
+def remove_neighbourhood(g, v):
+    print(g)
+    # time.sleep(1)
+    for node in neighbourhood(v):
+        g.pop(node)
+    return g
+
+def remove_vertex(g, v):
+    print(v, type(v))
+    print(g)
+    # time.sleep(111)
+    g.pop(v[0])
+    return g
+    
+def emvc(g, ub, c):
+    print('GGGGGGG', g)
+    # time.sleep(1)
+    if len(c) >= ub:
+        return ub
+    elif g is None or len(g) == 0:
+        return len(c)
+
+    # select v from V with max degree
+    v = max(g.items(), key=lambda x: len(x[1]))
+    print(type(v[0]))
+    # time.sleep(1000)
+    c1 = emvc(remove_neighbourhood(g.copy(), v), ub, {**c, **neighbourhood(v)})
+    c2 = emvc(remove_vertex(g.copy(), v), min(ub, c1), {**c, **{v[0]: v[1]}})
+    return min(c1, c2)
+
     
 def mvc(cardinal_conflicts):
     cardinality_graph = build_graph(cardinal_conflicts)
     if len(cardinality_graph) == 0:
         return 0
-    cover_size = min(f(cardinality_graph, cardinal_conflicts[0], 1), f(cardinality_graph, cardinal_conflicts[0], 0))
+    cover_size = mvc(some_shit)
     return cover_size
 
-def f(cardinality_graph, u, isGuarded):
-    if len(cardinality_graph) == 0:
-        return isGuarded
+
 def compute_heuristics(my_map, goal):
     # Use Dijkstra to build a shortest-path tree rooted at the goal location
     open_list = []
