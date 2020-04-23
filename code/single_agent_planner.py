@@ -25,6 +25,7 @@ def get_CG_cost(my_map, N):
         MDD = get_MDD(my_map, N['paths'][agent][0], N['paths'][agent][-1], agent, N['constraints'], c)
         MDDs.append(MDD)
         print_MDD(MDD)
+    print(get_cardinal_conflicts(MDDs, numberOfAgents, c))
     return get_sum_of_cost(N['paths']) + h
 
 
@@ -83,20 +84,48 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
 def get_cardinal_conflicts(MDDs, numberOfAgents, c):
     cardinal_conflicts = []
     for i in range(numberOfAgents):
-        for j in range(i, numberOfAgents):
-            ci = len(MDDs[i])
+        for j in range(i+1, numberOfAgents):
+            ci = min(len(MDDs[i]), len(MDDs[j]))
             for timestep in range(ci):
-                if(len(MDDs[i]) == 1 and len(MDDs[j]) == 1 and MDDs[i] == MDDs[j]):
-                    cardinal.conflicts({
-                        'agent1': i,
-                        'agent2': j,
-                    })
+                # print(i)
+                # print("length of mdds[i][timestep]", len(MDDs[i][timestep]))
+                # print("length of mdds[j][timestep]", len(MDDs[j][timestep]))
+                # print("first mdd", list(MDDs[i][timestep])[0])
+                # print("second mdd", list(MDDs[j][timestep])[0])
+                if len(MDDs[i][timestep]) == 1 and len(MDDs[j][timestep]) == 1 and list(MDDs[i][timestep])[0] == list(MDDs[j][timestep])[0]:
+                    cardinal_conflicts.append((i, j))
                     break
 
-def mvc(cardinal_conflicts):
-    #fuck
-    pass
+    
+    return cardinal_conflicts
 
+def build_graph(cardinal_conflicts):
+    adj_list = {}
+    for conflict in cardinal_conflicts:
+        if conflict[0] in adj_list:
+            adj_list[conflict[0]].append(conflict[1])
+        else:
+            adj_list[conflict[0]] = [conflict[1]]
+        
+        if conflict[1] in adj_list:
+            adj_list[conflict[1]].append(conflict[0])
+        else:
+            adj_list[conflict[1]] = [conflict[0]]
+
+    return adj_list
+
+def emvc(adj_list, upper_bound, cover):
+    
+def mvc(cardinal_conflicts):
+    cardinality_graph = build_graph(cardinal_conflicts)
+    if len(cardinality_graph) == 0:
+        return 0
+    cover_size = min(f(cardinality_graph, cardinal_conflicts[0], 1), f(cardinality_graph, cardinal_conflicts[0], 0))
+    return cover_size
+
+def f(cardinality_graph, u, isGuarded):
+    if len(cardinality_graph) == 0:
+        return isGuarded
 def compute_heuristics(my_map, goal):
     # Use Dijkstra to build a shortest-path tree rooted at the goal location
     open_list = []
