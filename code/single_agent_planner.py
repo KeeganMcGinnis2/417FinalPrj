@@ -14,6 +14,89 @@ def get_sum_of_cost(paths):
     return rst
 
 
+def get_CG_cost(my_map, N):
+    h = 0
+    #c for agent 0,  c = len(N['paths'][0])
+    MDDs = []
+    numberOfAgents = len(N['paths'])
+    print("number of agents", numberOfAgents)
+    for agent in range(numberOfAgents):
+        c = len(N['paths'][agent])
+        MDD = get_MDD(my_map, N['paths'][agent][0], N['paths'][agent][-1], agent, N['constraints'], c)
+        MDDs.append(MDD)
+        print_MDD(MDD)
+    return get_sum_of_cost(N['paths']) + h
+
+
+def print_MDD(MDD):
+    print("MDD:")
+    for location in MDD:
+        print(location)
+        
+
+def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
+    MDD = [set() for i in range(c)]
+    open_list = []
+    #closed_list = dict()
+    constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
+    upper_bound = c
+    root = {'loc': start_loc, 'g_val': 0, 'h_val': 0, 'parent': None, 'timestep': 0}
+    push_node(open_list, root, 0)
+    #closed_list[(root['loc'], root['timestep'])] = root
+    nodeCount = 0
+    while len(open_list) > 0:
+        curr = pop_node(open_list)
+        #path = get_path(curr)
+        #print(path)
+        if curr['timestep'] >= upper_bound:
+            return MDD
+        if curr['loc'] == goal_loc and curr['timestep'] >= max_constraint_time and c-1 == curr['timestep']:
+            path = get_path(curr)
+            #print(path)
+            for i in range(c):
+                MDD[i].add(path[i])
+            continue
+        for dir in range(5):
+            child_loc = move(curr['loc'], dir)
+            if child_loc[0] == -1 or child_loc[0] == len(my_map) or child_loc[1] == -1 or child_loc[1] == len(my_map[0]):
+                continue
+            if my_map[child_loc[0]][child_loc[1]] or is_constrained(curr['loc'], child_loc, curr['timestep'] + 1, constraint_table):
+                continue
+            child = {'loc': child_loc,
+                    'g_val': curr['g_val'] + 1,
+                    'h_val': 0,
+                    'parent': curr,
+                    'timestep': curr['timestep'] + 1}
+            #if (child['loc'], child['timestep']) in closed_list:
+             #   existing_node = closed_list[(child['loc'], child['timestep'])]
+              #  if compare_nodes(child, existing_node):
+                    #closed_list[(child['loc'], child['timestep'])] = child
+               #     push_node(open_list, child)
+           # else:
+                #closed_list[(child['loc'], child['timestep'])] = child
+            push_node(open_list, child, nodeCount)
+            nodeCount += 1
+    print(agent)
+    time.sleep(1)
+    return None  # Failed to find solutions
+
+def get_cardinal_conflicts(MDDs, numberOfAgents, c):
+    cardinal_conflicts = []
+    for i in range(numberOfAgents):
+        for j in range(i, numberOfAgents):
+            ci = len(MDDs[i])
+            for timestep in range(ci):
+                if(len(MDDs[i]) == 1 and len(MDDs[j]) == 1 and MDDs[i] == MDDs[j]):
+                    cardinal.conflicts({
+                        'agent1': i,
+                        'agent2': j,
+                    })
+                    break
+
+def mvc(cardinal_conflicts):
+    #fuck
+    pass
+
 def compute_heuristics(my_map, goal):
     # Use Dijkstra to build a shortest-path tree rooted at the goal location
     open_list = []
@@ -70,7 +153,6 @@ def build_constraint_table(constraints, agent):
     return constraint_table, max_timestep
     
 
-
 def get_location(path, time):
     if time < 0:
         return path[0]
@@ -108,12 +190,12 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
         return False
 
 
-def push_node(open_list, node):
-    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
+def push_node(open_list, node, nodeCount):
+    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], nodeCount, node))
 
 
 def pop_node(open_list):
-    _, _, _, curr = heapq.heappop(open_list)
+    _, _, _, _, curr = heapq.heappop(open_list)
     return curr
 
 def compare_nodes(n1, n2):
@@ -140,7 +222,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     earliest_goal_timestep = 0
     h_value = h_values[start_loc]
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
-    push_node(open_list, root)
+    push_node(open_list, root, 0)
     closed_list[(root['loc'], root['timestep'])] = root
     while len(open_list) > 0:
         curr = pop_node(open_list)
@@ -165,10 +247,10 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 existing_node = closed_list[(child['loc'], child['timestep'])]
                 if compare_nodes(child, existing_node):
                     closed_list[(child['loc'], child['timestep'])] = child
-                    push_node(open_list, child)
+                    push_node(open_list, child, 0)
             else:
                 closed_list[(child['loc'], child['timestep'])] = child
-                push_node(open_list, child)
+                push_node(open_list, child, 0)
 
     return None  # Failed to find solutions
 

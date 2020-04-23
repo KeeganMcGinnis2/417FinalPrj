@@ -78,7 +78,8 @@ if __name__ == '__main__':
                         help='Use the iterative a*')
     parser.add_argument('--solver', type=str, default=SOLVER,
                         help='The solver to use (one of: {CBS,Independent,Prioritized}), defaults to ' + str(SOLVER))
-
+    parser.add_argument('--heuristic', type=str, default=None,
+                        help='The heuristic to use (one of: {None, CG}), defaults to None')
     args = parser.parse_args()
 
 
@@ -93,7 +94,7 @@ if __name__ == '__main__':
         if args.solver == "CBS":
             print("***Run CBS***")
             cbs = CBSSolver(my_map, starts, goals)
-            paths = cbs.find_solution(args.iterative)
+            paths = cbs.find_solution(args.iterative, args.heuristic)
         elif args.solver == "Independent":
             print("***Run Independent***")
             solver = IndependentSolver(my_map, starts, goals)

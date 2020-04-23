@@ -1,7 +1,7 @@
 import time as timer
 import heapq
 import random
-from single_agent_planner import compute_heuristics, a_star, get_location, get_sum_of_cost, ida_star
+from single_agent_planner import compute_heuristics, a_star, get_location, get_sum_of_cost, ida_star, get_CG_cost
 
 
 def detect_collision(path1, path2):
@@ -113,7 +113,7 @@ class CBSSolver(object):
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, iterative=True):
+    def find_solution(self, iterative=True, CG=True):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -144,26 +144,12 @@ class CBSSolver(object):
         root['cost'] = get_sum_of_cost(root['paths'])
         root['collisions'] = detect_collisions(root['paths'])
         self.push_node(root)
-        # Task 3.1: Testing
-        # print(root['collisions'])
-        
-        # Task 3.2: Testing
-        # for collision in root['collisions']:
-            # print(standard_splitting(collision))
-
-        ##############################
-        # Task 3.3: High-Level Search
-        #           Repeat the following as long as the open list is not empty:
-        #             1. Get the next node from the open list (you can use self.pop_node()
-        #             2. If this node has no collision, return solution
-        #             3. Otherwise, choose the first collision and convert to a list of constraints (using your
-        #                standard_splitting function). Add a new child node to your open list for each constraint
-        #           Ensure to create a copy of any objects that your child nodes might inherit
         while len(self.open_list) > 0:
             p = self.pop_node()
             # print("Expanded node", p)
             if len(p['collisions']) == 0:
                 self.print_results(p)
+                get_CG_cost(self.my_map, p)
                 return p['paths']
 
             collision = p['collisions'][0]
@@ -183,7 +169,10 @@ class CBSSolver(object):
                 if len(path) > 0:
                     q['paths'][ai] = path
                     q['collisions'] = detect_collisions(q['paths'])
-                    q['cost'] = get_sum_of_cost(q['paths'])
+                    if CG:
+                        q['cost'] = get_CG_cost(self.my_map, q)
+                    else:
+                        q['cost'] = get_sum_of_cost(q['paths'])
                     self.push_node(q)
 
         self.print_results(root)
