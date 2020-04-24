@@ -1,6 +1,8 @@
 import heapq
 import math
 import time
+from copy import deepcopy
+
 
 def move(loc, dir):
     directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
@@ -16,20 +18,22 @@ def get_sum_of_cost(paths):
 
 def get_CG_cost(my_map, N):
     h = 0
-    #c for agent 0,  c = len(N['paths'][0])
+    # c for agent 0,  c = len(N['paths'][0])
     MDDs = []
     numberOfAgents = len(N['paths'])
-    print("number of agents", numberOfAgents)
+    #print("number of agents", numberOfAgents)
     for agent in range(numberOfAgents):
         c = len(N['paths'][agent])
+        #print("c is: ", c)
         MDD = get_MDD(my_map, N['paths'][agent][0], N['paths'][agent][-1], agent, N['constraints'], c)
+        # print_MDD(MDD)
         MDDs.append(MDD)
-        print_MDD(MDD)
-    print(get_cardinal_conflicts(MDDs, numberOfAgents, c))
+    #print("conflicts", get_cardinal_conflicts(MDDs, numberOfAgents, c))
     cards = get_cardinal_conflicts(MDDs, numberOfAgents, c)
-    g = build_graph(cards)
-    h = emvc(g, len(g), {})
-    print("THE H VALUE IS:", h, "!!!!!!!!!!!!!!!!!!!")
+    if (len(cards) > 0):
+        g = build_graph(cards)
+        h = emvc(g, len(g), {})
+    #print("THE H VALUE IS:", h, "!!!!!!!!!!!!!!!!!!!")
     return get_sum_of_cost(N['paths']) + h
 
 
@@ -85,6 +89,7 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
     # time.sleep(1)
     return None  # Failed to find solutions
 
+
 def get_cardinal_conflicts(MDDs, numberOfAgents, c):
     cardinal_conflicts = []
     for i in range(numberOfAgents):
@@ -103,6 +108,7 @@ def get_cardinal_conflicts(MDDs, numberOfAgents, c):
     
     return cardinal_conflicts
 
+
 def build_graph(cardinal_conflicts):
     adj_list = {}
     for conflict in cardinal_conflicts:
@@ -118,33 +124,52 @@ def build_graph(cardinal_conflicts):
 
     return adj_list
 
-def neighbourhood(v):
+
+def open_neighbourhood(g, v):
+    #print("open_neighbourhood graph:", g)
     nd = {}
     for adj in v[1]:
-        if v[0] in nd:
-            nd[v[0]].append(adj)
-        else:
-            nd[v[0]] = [adj]
-
+        nd[adj] = g[adj]
+        # if v[0] in nd:
+        #     nd[v[0]].append(adj)
+        # else:
+        #     nd[v[0]] = [adj]
+    for node in nd:
+        for adj in nd[node]:
+            if adj not in nd:
+                nd[node].remove(adj)
+    #print('open_neighbourhood of', v,':', nd)
     return nd
 
+
 def remove_neighbourhood(g, v):
-    print(g)
+    #print(g)
     # time.sleep(1)
-    for node in neighbourhood(v):
+    for node in open_neighbourhood(g.copy(), v):
+        for node2 in g:
+            if node in g[node2]:
+                g[node2].remove(node)
         g.pop(node)
+    remove_vertex(g, v)
     return g
 
+
 def remove_vertex(g, v):
-    print(v, type(v))
-    print(g)
+    # print(v, type(v))
+    # print(g)
     # time.sleep(111)
     g.pop(v[0])
+    for node2 in g:
+        if v[0] in g[node2]:
+            g[node2].remove(v[0])
     return g
     
+    
 def emvc(g, ub, c):
-    print('GGGGGGG', g)
+    #print('graph:', g)
+    #print('cover:', c)
     # time.sleep(1)
+    #print('upperbound:', ub)
     if len(c) >= ub:
         return ub
     elif g is None or len(g) == 0:
@@ -152,19 +177,12 @@ def emvc(g, ub, c):
 
     # select v from V with max degree
     v = max(g.items(), key=lambda x: len(x[1]))
-    print(type(v[0]))
-    # time.sleep(1000)
-    c1 = emvc(remove_neighbourhood(g.copy(), v), ub, {**c, **neighbourhood(v)})
-    c2 = emvc(remove_vertex(g.copy(), v), min(ub, c1), {**c, **{v[0]: v[1]}})
+    # print(type(v[0]))
+    #time.sleep(1)
+    #print(remove_neighbourhood(deepcopy(g), v) == remove_neighbourhood(deepcopy(g), v))
+    c1 = emvc(remove_neighbourhood(deepcopy(g), v), ub, {**c, **open_neighbourhood(deepcopy(g), v)})
+    c2 = emvc(remove_vertex(deepcopy(g), v), min(ub, c1), {**c, **{v[0]: v[1]}})
     return min(c1, c2)
-
-    
-def mvc(cardinal_conflicts):
-    cardinality_graph = build_graph(cardinal_conflicts)
-    if len(cardinality_graph) == 0:
-        return 0
-    cover_size = mvc(some_shit)
-    return cover_size
 
 
 def compute_heuristics(my_map, goal):
