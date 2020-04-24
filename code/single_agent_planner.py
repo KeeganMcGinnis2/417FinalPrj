@@ -26,7 +26,7 @@ def get_CG_cost(my_map, N):
         c = len(N['paths'][agent])
         #print("c is: ", c)
         MDD = get_MDD(my_map, N['paths'][agent][0], N['paths'][agent][-1], agent, N['constraints'], c)
-        # print_MDD(MDD)
+        #print_MDD(agent, MDD)
         MDDs.append(MDD)
     #print("conflicts", get_cardinal_conflicts(MDDs, numberOfAgents, c))
     cards = get_cardinal_conflicts(MDDs, numberOfAgents, c)
@@ -37,8 +37,8 @@ def get_CG_cost(my_map, N):
     return get_sum_of_cost(N['paths']) + h
 
 
-def print_MDD(MDD):
-    print("MDD:")
+def print_MDD(agent, MDD):
+    print(agent,"MDD:")
     for location in MDD:
         print(location)
         
@@ -46,12 +46,12 @@ def print_MDD(MDD):
 def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
     MDD = [set() for i in range(c)]
     open_list = []
-    #closed_list = dict()
+    closed_list = dict()
     constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
     upper_bound = c
     root = {'loc': start_loc, 'g_val': 0, 'h_val': 0, 'parent': None, 'timestep': 0}
     push_node(open_list, root, 0)
-    #closed_list[(root['loc'], root['timestep'])] = root
+    closed_list[(root['loc'], root['timestep'])] = root
     nodeCount = 0
     while len(open_list) > 0:
         curr = pop_node(open_list)
@@ -65,6 +65,7 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
             for i in range(c):
                 MDD[i].add(path[i])
             continue
+        #print('timestep',  curr['timestep'],'for', agent, ":",MDD[curr['timestep']])
         for dir in range(5):
             child_loc = move(curr['loc'], dir)
             if child_loc[0] == -1 or child_loc[0] == len(my_map) or child_loc[1] == -1 or child_loc[1] == len(my_map[0]):
@@ -76,24 +77,26 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
                     'h_val': 0,
                     'parent': curr,
                     'timestep': curr['timestep'] + 1}
-            #if (child['loc'], child['timestep']) in closed_list:
-             #   existing_node = closed_list[(child['loc'], child['timestep'])]
-              #  if compare_nodes(child, existing_node):
-                    #closed_list[(child['loc'], child['timestep'])] = child
-               #     push_node(open_list, child)
-           # else:
-                #closed_list[(child['loc'], child['timestep'])] = child
-            push_node(open_list, child, nodeCount)
+            if (child['loc'], child['timestep']) in closed_list:
+                #print('dupes')
+                existing_node = closed_list[(child['loc'], child['timestep'])]
+                if compare_nodes(child, existing_node):
+                    closed_list[(child['loc'], child['timestep'])] = child
+                    push_node(open_list, child, nodeCount)
+            else:
+                closed_list[(child['loc'], child['timestep'])] = child
+                push_node(open_list, child, nodeCount)
             nodeCount += 1
     print(agent)
     # time.sleep(1)
-    return None  # Failed to find solutions
+    return MDD
 
 
 def get_cardinal_conflicts(MDDs, numberOfAgents, c):
     cardinal_conflicts = []
     for i in range(numberOfAgents):
         for j in range(i+1, numberOfAgents):
+            #print(MDDs)
             ci = min(len(MDDs[i]), len(MDDs[j]))
             for timestep in range(ci):
                 # print(i)
@@ -306,7 +309,8 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     open_list = []
     closed_list = dict()
     constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
-    upper_bound = len(my_map)*len(my_map[0])
+    # upper_bound = len(my_map)*len(my_map[0])
+    upper_bound = math.inf
     earliest_goal_timestep = 0
     h_value = h_values[start_loc]
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
@@ -339,7 +343,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             else:
                 closed_list[(child['loc'], child['timestep'])] = child
                 push_node(open_list, child, 0)
-
+    print("NO SOLUTION")
     return None  # Failed to find solutions
 
 
