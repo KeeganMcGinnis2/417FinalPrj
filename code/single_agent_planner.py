@@ -1,6 +1,7 @@
 import heapq
 import math
 import time
+from copy import deepcopy
 
 def move(loc, dir):
     directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
@@ -12,6 +13,140 @@ def get_sum_of_cost(paths):
     for path in paths:
         rst += len(path) - 1
     return rst
+
+
+def get_CG_cost(my_map, N):
+    h = 0
+    MDDs = []
+    numberOfAgents = len(N['paths'])
+    for agent in range(numberOfAgents):
+        c = len(N['paths'][agent])
+        MDD = get_MDD(my_map, N['paths'][agent][0], N['paths'][agent][-1], agent, N['constraints'], c)
+        MDDs.append(MDD)
+    cards = get_cardinal_conflicts(MDDs, numberOfAgents, c)
+    if (len(cards) > 0):
+        g = build_graph(cards)
+        h = emvc(g, len(g), {})
+    return get_sum_of_cost(N['paths']) + h
+
+
+def print_MDD(agent, MDD):
+    print(agent,"MDD:")
+    for location in MDD:
+        print(location)
+        
+
+def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
+    MDD = [set() for i in range(c)]
+    open_list = []
+    closed_list = dict()
+    constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
+    upper_bound = c
+    root = {'loc': start_loc, 'g_val': 0, 'h_val': 0, 'parent': None, 'timestep': 0}
+    push_node(open_list, root, 0)
+    closed_list[(root['loc'], root['timestep'])] = root
+    nodeCount = 0
+    while len(open_list) > 0:
+        curr = pop_node(open_list)
+        if curr['timestep'] >= upper_bound:
+            return MDD
+        if curr['loc'] == goal_loc and curr['timestep'] >= max_constraint_time and c-1 == curr['timestep']:
+            path = get_path(curr)
+            for i in range(c):
+                MDD[i].add(path[i])
+            continue
+        for dir in range(5):
+            child_loc = move(curr['loc'], dir)
+            if child_loc[0] == -1 or child_loc[0] == len(my_map) or child_loc[1] == -1 or child_loc[1] == len(my_map[0]):
+                continue
+            if my_map[child_loc[0]][child_loc[1]] or is_constrained(curr['loc'], child_loc, curr['timestep'] + 1, constraint_table):
+                continue
+            child = {'loc': child_loc,
+                    'g_val': curr['g_val'] + 1,
+                    'h_val': 0,
+                    'parent': curr,
+                    'timestep': curr['timestep'] + 1}
+            if (child['loc'], child['timestep']) in closed_list:
+                existing_node = closed_list[(child['loc'], child['timestep'])]
+                if compare_nodes(child, existing_node):
+                    closed_list[(child['loc'], child['timestep'])] = child
+                    push_node(open_list, child, nodeCount)
+            else:
+                closed_list[(child['loc'], child['timestep'])] = child
+                push_node(open_list, child, nodeCount)
+            nodeCount += 1
+    return MDD
+
+
+def get_cardinal_conflicts(MDDs, numberOfAgents, c):
+    cardinal_conflicts = []
+    for i in range(numberOfAgents):
+        for j in range(i+1, numberOfAgents):
+            ci = min(len(MDDs[i]), len(MDDs[j]))
+            for timestep in range(ci):
+                if len(MDDs[i][timestep]) == 1 and len(MDDs[j][timestep]) == 1 and list(MDDs[i][timestep])[0] == list(MDDs[j][timestep])[0]:
+                    cardinal_conflicts.append((i, j))
+                    break
+
+    
+    return cardinal_conflicts
+
+
+def build_graph(cardinal_conflicts):
+    adj_list = {}
+    for conflict in cardinal_conflicts:
+        if conflict[0] in adj_list:
+            adj_list[conflict[0]].append(conflict[1])
+        else:
+            adj_list[conflict[0]] = [conflict[1]]
+        
+        if conflict[1] in adj_list:
+            adj_list[conflict[1]].append(conflict[0])
+        else:
+            adj_list[conflict[1]] = [conflict[0]]
+
+    return adj_list
+
+
+def open_neighbourhood(g, v):
+    nd = {}
+    for adj in v[1]:
+        nd[adj] = g[adj]
+    for node in nd:
+        for adj in nd[node]:
+            if adj not in nd:
+                nd[node].remove(adj)
+    return nd
+
+
+def remove_neighbourhood(g, v):
+    for node in open_neighbourhood(g.copy(), v):
+        for node2 in g:
+            if node in g[node2]:
+                g[node2].remove(node)
+        g.pop(node)
+    remove_vertex(g, v)
+    return g
+
+
+def remove_vertex(g, v):
+    g.pop(v[0])
+    for node2 in g:
+        if v[0] in g[node2]:
+            g[node2].remove(v[0])
+    return g
+    
+    
+def emvc(g, ub, c):
+    if len(c) >= ub:
+        return ub
+    elif g is None or len(g) == 0:
+        return len(c)
+
+    v = max(g.items(), key=lambda x: len(x[1]))
+    c1 = emvc(remove_neighbourhood(deepcopy(g), v), ub, {**c, **open_neighbourhood(deepcopy(g), v)})
+    c2 = emvc(remove_vertex(deepcopy(g), v), min(ub, c1), {**c, **{v[0]: v[1]}})
+    return min(c1, c2)
 
 
 def compute_heuristics(my_map, goal):
@@ -70,7 +205,6 @@ def build_constraint_table(constraints, agent):
     return constraint_table, max_timestep
     
 
-
 def get_location(path, time):
     if time < 0:
         return path[0]
@@ -108,12 +242,12 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
         return False
 
 
-def push_node(open_list, node):
-    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
+def push_node(open_list, node, nodeCount):
+    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], nodeCount, node))
 
 
 def pop_node(open_list):
-    _, _, _, curr = heapq.heappop(open_list)
+    _, _, _, _, curr = heapq.heappop(open_list)
     return curr
 
 def compare_nodes(n1, n2):
@@ -132,15 +266,16 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     ##############################
     # Task 1.1: Extend the A* search to search in the space-time domain
     #           rather than space domain, only.
-
+    start_time = time.time()
     open_list = []
     closed_list = dict()
     constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
-    upper_bound = len(my_map)*len(my_map[0])
+    # upper_bound = len(my_map)*len(my_map[0])
+    upper_bound = math.inf
     earliest_goal_timestep = 0
     h_value = h_values[start_loc]
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
-    push_node(open_list, root)
+    push_node(open_list, root, 0)
     closed_list[(root['loc'], root['timestep'])] = root
     while len(open_list) > 0:
         curr = pop_node(open_list)
@@ -165,11 +300,11 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 existing_node = closed_list[(child['loc'], child['timestep'])]
                 if compare_nodes(child, existing_node):
                     closed_list[(child['loc'], child['timestep'])] = child
-                    push_node(open_list, child)
+                    push_node(open_list, child, 0)
             else:
                 closed_list[(child['loc'], child['timestep'])] = child
-                push_node(open_list, child)
-
+                push_node(open_list, child, 0)
+    print("NO SOLUTION")
     return None  # Failed to find solutions
 
 
@@ -197,13 +332,8 @@ def ida_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     while True:
         t = search(my_map, root, goal_loc, h_values, agent, constraint_table, max_constraint_time, threshold)
         if type(t) == dict:
-            # print('complete')
-            # print(agent, '   ', get_path(t))
-            # time.sleep(1)
             return get_path(t)
         elif t == math.inf:
-            # print('fail')
-            # time.sleep(1)
             return None
         threshold = t
 
