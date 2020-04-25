@@ -79,11 +79,11 @@ if __name__ == '__main__':
     parser.add_argument('--solver', type=str, default=SOLVER,
                         help='The solver to use (one of: {CBS,Independent,Prioritized}), defaults to ' + str(SOLVER))
     parser.add_argument('--heuristic', type=str, default=None,
-                        help='The heuristic to use (one of: {None, CG}), defaults to None')
+                        help='The heuristic to use (only supports: CG), defaults to no heuristic')
     args = parser.parse_args()
 
 
-    result_file = open("results.csv", "w", buffering=1)
+    # result_file = open("results.csv", "w", buffering=1)
 
     for file in sorted(glob.glob(args.instance)):
 
@@ -102,8 +102,8 @@ if __name__ == '__main__':
         else:
             raise RuntimeError("Unknown solver!")
 
-        cost = get_sum_of_cost(paths)
-        result_file.write("{},{}\n".format(file, cost))
+        # cost = get_sum_of_cost(paths)
+        # result_file.write("{},{}\n".format(file, cost))
 
 
         if not args.batch:
@@ -111,4 +111,4 @@ if __name__ == '__main__':
             animation = Animation(my_map, starts, goals, paths)
             # animation.save("output.mp4", 1.0)
             animation.show()
-    result_file.close()
+    # result_file.close()

@@ -104,12 +104,10 @@ class CBSSolver(object):
 
     def push_node(self, node):
         heapq.heappush(self.open_list, (node['cost'], len(node['collisions']), self.num_of_generated, node))
-        # print("Generate node {}".format(self.num_of_generated))
         self.num_of_generated += 1
 
     def pop_node(self):
         _, _, id, node = heapq.heappop(self.open_list)
-        # print("Expand node {}".format(id))
         self.num_of_expanded += 1
         return node
 
@@ -146,11 +144,8 @@ class CBSSolver(object):
         self.push_node(root)
         while len(self.open_list) > 0:
             p = self.pop_node()
-            # print("Expanded node", p)
             if len(p['collisions']) == 0:
                 self.print_results(p)
-                # if CG:
-                    # get_CG_cost(self.my_map, p)
                 return p['paths']
 
             collision = p['collisions'][0]
@@ -186,3 +181,8 @@ class CBSSolver(object):
         print("Sum of costs:    {}".format(get_sum_of_cost(node['paths'])))
         print("Expanded nodes:  {}".format(self.num_of_expanded))
         print("Generated nodes: {}".format(self.num_of_generated))
+
+        result_file = open("results.csv", "a", buffering=1)
+        cost = get_sum_of_cost(node['paths'])
+        result_file.write("{},{},{},{}\n".format(cost, CPU_time, self.num_of_expanded, self.num_of_generated))
+        result_file.close()

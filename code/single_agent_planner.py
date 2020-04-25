@@ -3,7 +3,6 @@ import math
 import time
 from copy import deepcopy
 
-
 def move(loc, dir):
     directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
     return loc[0] + directions[dir][0], loc[1] + directions[dir][1]
@@ -18,22 +17,16 @@ def get_sum_of_cost(paths):
 
 def get_CG_cost(my_map, N):
     h = 0
-    # c for agent 0,  c = len(N['paths'][0])
     MDDs = []
     numberOfAgents = len(N['paths'])
-    #print("number of agents", numberOfAgents)
     for agent in range(numberOfAgents):
         c = len(N['paths'][agent])
-        #print("c is: ", c)
         MDD = get_MDD(my_map, N['paths'][agent][0], N['paths'][agent][-1], agent, N['constraints'], c)
-        #print_MDD(agent, MDD)
         MDDs.append(MDD)
-    #print("conflicts", get_cardinal_conflicts(MDDs, numberOfAgents, c))
     cards = get_cardinal_conflicts(MDDs, numberOfAgents, c)
     if (len(cards) > 0):
         g = build_graph(cards)
         h = emvc(g, len(g), {})
-    #print("THE H VALUE IS:", h, "!!!!!!!!!!!!!!!!!!!")
     return get_sum_of_cost(N['paths']) + h
 
 
@@ -55,17 +48,13 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
     nodeCount = 0
     while len(open_list) > 0:
         curr = pop_node(open_list)
-        #path = get_path(curr)
-        #print(path)
         if curr['timestep'] >= upper_bound:
             return MDD
         if curr['loc'] == goal_loc and curr['timestep'] >= max_constraint_time and c-1 == curr['timestep']:
             path = get_path(curr)
-            #print(path)
             for i in range(c):
                 MDD[i].add(path[i])
             continue
-        #print('timestep',  curr['timestep'],'for', agent, ":",MDD[curr['timestep']])
         for dir in range(5):
             child_loc = move(curr['loc'], dir)
             if child_loc[0] == -1 or child_loc[0] == len(my_map) or child_loc[1] == -1 or child_loc[1] == len(my_map[0]):
@@ -78,7 +67,6 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
                     'parent': curr,
                     'timestep': curr['timestep'] + 1}
             if (child['loc'], child['timestep']) in closed_list:
-                #print('dupes')
                 existing_node = closed_list[(child['loc'], child['timestep'])]
                 if compare_nodes(child, existing_node):
                     closed_list[(child['loc'], child['timestep'])] = child
@@ -87,8 +75,6 @@ def get_MDD(my_map, start_loc, goal_loc, agent, constraints, c):
                 closed_list[(child['loc'], child['timestep'])] = child
                 push_node(open_list, child, nodeCount)
             nodeCount += 1
-    print(agent)
-    # time.sleep(1)
     return MDD
 
 
@@ -96,14 +82,8 @@ def get_cardinal_conflicts(MDDs, numberOfAgents, c):
     cardinal_conflicts = []
     for i in range(numberOfAgents):
         for j in range(i+1, numberOfAgents):
-            #print(MDDs)
             ci = min(len(MDDs[i]), len(MDDs[j]))
             for timestep in range(ci):
-                # print(i)
-                # print("length of mdds[i][timestep]", len(MDDs[i][timestep]))
-                # print("length of mdds[j][timestep]", len(MDDs[j][timestep]))
-                # print("first mdd", list(MDDs[i][timestep])[0])
-                # print("second mdd", list(MDDs[j][timestep])[0])
                 if len(MDDs[i][timestep]) == 1 and len(MDDs[j][timestep]) == 1 and list(MDDs[i][timestep])[0] == list(MDDs[j][timestep])[0]:
                     cardinal_conflicts.append((i, j))
                     break
@@ -129,25 +109,17 @@ def build_graph(cardinal_conflicts):
 
 
 def open_neighbourhood(g, v):
-    #print("open_neighbourhood graph:", g)
     nd = {}
     for adj in v[1]:
         nd[adj] = g[adj]
-        # if v[0] in nd:
-        #     nd[v[0]].append(adj)
-        # else:
-        #     nd[v[0]] = [adj]
     for node in nd:
         for adj in nd[node]:
             if adj not in nd:
                 nd[node].remove(adj)
-    #print('open_neighbourhood of', v,':', nd)
     return nd
 
 
 def remove_neighbourhood(g, v):
-    #print(g)
-    # time.sleep(1)
     for node in open_neighbourhood(g.copy(), v):
         for node2 in g:
             if node in g[node2]:
@@ -158,9 +130,6 @@ def remove_neighbourhood(g, v):
 
 
 def remove_vertex(g, v):
-    # print(v, type(v))
-    # print(g)
-    # time.sleep(111)
     g.pop(v[0])
     for node2 in g:
         if v[0] in g[node2]:
@@ -169,20 +138,12 @@ def remove_vertex(g, v):
     
     
 def emvc(g, ub, c):
-    #print('graph:', g)
-    #print('cover:', c)
-    # time.sleep(1)
-    #print('upperbound:', ub)
     if len(c) >= ub:
         return ub
     elif g is None or len(g) == 0:
         return len(c)
 
-    # select v from V with max degree
     v = max(g.items(), key=lambda x: len(x[1]))
-    # print(type(v[0]))
-    #time.sleep(1)
-    #print(remove_neighbourhood(deepcopy(g), v) == remove_neighbourhood(deepcopy(g), v))
     c1 = emvc(remove_neighbourhood(deepcopy(g), v), ub, {**c, **open_neighbourhood(deepcopy(g), v)})
     c2 = emvc(remove_vertex(deepcopy(g), v), min(ub, c1), {**c, **{v[0]: v[1]}})
     return min(c1, c2)
@@ -305,7 +266,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     ##############################
     # Task 1.1: Extend the A* search to search in the space-time domain
     #           rather than space domain, only.
-
+    start_time = time.time()
     open_list = []
     closed_list = dict()
     constraint_table, max_constraint_time = build_constraint_table(constraints, agent)
@@ -371,13 +332,8 @@ def ida_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     while True:
         t = search(my_map, root, goal_loc, h_values, agent, constraint_table, max_constraint_time, threshold)
         if type(t) == dict:
-            # print('complete')
-            # print(agent, '   ', get_path(t))
-            # time.sleep(1)
             return get_path(t)
         elif t == math.inf:
-            # print('fail')
-            # time.sleep(1)
             return None
         threshold = t
 
